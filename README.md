@@ -4,7 +4,7 @@ V1 đang chạy trên VM1/VM2, MacBook và Windows. Workspace này chứa cả s
 
 - [Kiến trúc V1](docs/architecture-current.md) và [inventory đã đối chiếu](docs/runtime-inventory.md)
 - [Kiến trúc V2](docs/architecture-target.md), [vận hành staging](docs/operations.md), [kế hoạch chuyển đổi](docs/migration-v1-to-v2.md)
-- [Audit bảo mật](docs/security.md)
+- [Audit bảo mật](docs/security.md) và [rà soát mức độ hoàn thiện V2](docs/v2-readiness.md)
 
 ## Kiểm tra local trên Mac hoặc Windows
 

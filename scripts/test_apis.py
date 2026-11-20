@@ -5,7 +5,9 @@ import sys
 import tempfile
 import types
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
+
+import smoke_staging
 
 from fastapi.testclient import TestClient
 
@@ -78,6 +80,40 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(reader.get("/articles?limit=101").status_code, 422)
         conn.close.assert_called_once()
         conn.cursor.return_value.close.assert_called_once()
+
+    def test_query_article_id_is_bound_as_a_parameter(self):
+        conn = Mock()
+        conn.cursor.return_value.fetchall.return_value = []
+        query.app.dependency_overrides[query.connection_factory] = lambda: lambda: conn
+        self.addCleanup(query.app.dependency_overrides.clear)
+        reader = TestClient(query.app)
+        article_id = "article'with-quote"
+        response = reader.get("/articles", params={"article_id": article_id, "limit": 1})
+        self.assertEqual(response.json(), {"count": 0, "articles": []})
+        statement, parameters = conn.cursor.return_value.execute.call_args.args
+        self.assertIn("WHERE NOT _deleted AND article_id = ?", statement)
+        self.assertNotIn(article_id, statement)
+        self.assertEqual(parameters, (article_id,))
+
+
+class StagingSmokeTests(unittest.TestCase):
+    def test_write_smoke_uses_exact_lookup_even_when_first_page_is_full(self):
+        def respond(url, data=None, headers=None):
+            if url.endswith("/health"):
+                return 200, {}
+            if url.endswith("?limit=100"):
+                return 200, {"count": 100}
+            if url.endswith("/upload-files"):
+                return 202, {"status": "accepted"}
+            self.assertTrue(url.endswith("/articles?article_id=000-smoke-test-id&limit=1"))
+            return 200, {"articles": [{"article_id": "000-smoke-test-id", "title": "Staging smoke test"}]}
+
+        with patch.object(sys, "argv", ["smoke_staging.py", "--write-staging"]), \
+                patch.object(smoke_staging, "request", side_effect=respond), \
+                patch.object(smoke_staging, "uuid4", return_value=types.SimpleNamespace(hex="test-id")), \
+                patch("builtins.print") as output:
+            smoke_staging.main()
+        self.assertEqual(output.call_args.args[0], "STAGING_E2E_OK")
 
 
 if __name__ == "__main__":

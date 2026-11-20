@@ -27,11 +27,20 @@ def health():
 
 
 @app.get("/articles")
-def articles(limit: int = Query(default=20, ge=1, le=100), connect=Depends(connection_factory)):
+def articles(
+    limit: int = Query(default=20, ge=1, le=100),
+    article_id: str | None = Query(default=None, min_length=1, max_length=256),
+    connect=Depends(connection_factory),
+):
     fields = ("article_id", "title", "source", "category")
     try:
         with closing(connect()) as connection, closing(connection.cursor()) as cursor:
-            cursor.execute("SELECT article_id, title, source, category FROM articles WHERE NOT _deleted ORDER BY article_id LIMIT " + str(limit))
+            statement = "SELECT article_id, title, source, category FROM articles WHERE NOT _deleted"
+            suffix = " ORDER BY article_id LIMIT " + str(limit)
+            if article_id is None:
+                cursor.execute(statement + suffix)
+            else:
+                cursor.execute(statement + " AND article_id = ?" + suffix, (article_id,))
             rows = [dict(zip(fields, row)) for row in cursor.fetchall()]
     except Exception:
         raise HTTPException(503, "Trino query unavailable") from None

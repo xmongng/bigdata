@@ -2,6 +2,7 @@
 import argparse
 import json
 import time
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from uuid import uuid4
 
@@ -26,9 +27,8 @@ def main():
     print("STAGING_READ_OK", initial["count"])
     if not args.write_staging:
         return
-    if initial["count"] >= 99:
-        raise SystemExit("GET verification requires fewer than 99 existing rows")
     article_id = "000-smoke-" + uuid4().hex
+    lookup = QUERY + "/articles?" + urlencode({"article_id": article_id, "limit": 1})
     boundary = uuid4().hex
     payload = json.dumps({"article_id": article_id, "title": "Staging smoke test", "source": "synthetic"})
     body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"files\"; filename=\"smoke.json\"\r\n"
@@ -41,7 +41,7 @@ def main():
         raise SystemExit("POST did not confirm delivery")
     print("STAGING_POST_202", article_id, round(time.monotonic() - started, 3))
     while time.monotonic() - started < 90:
-        _, observed = request(QUERY + "/articles?limit=100")
+        _, observed = request(lookup)
         if any(row["article_id"] == article_id and row["title"] == "Staging smoke test" for row in observed["articles"]):
             print("STAGING_E2E_OK", article_id, round(time.monotonic() - started, 3))
             return
