@@ -1,0 +1,3 @@
+# Environment configuration template. Not loaded by the legacy applications.
+environment: staging
+# Endpoints and credentials should be supplied by managed env/secret injection.

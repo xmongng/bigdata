@@ -1,0 +1,3 @@
+# Placeholder for future vetted overrides. NOT production-ready.
+# Docker Compose merges this AFTER compose.yaml when selected with -f.
+services: {}

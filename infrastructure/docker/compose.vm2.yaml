@@ -1,0 +1,45 @@
+name: vnnews-v2-spark
+services:
+  spark-master-v2:
+    image: vn-news-spark:3.5.7
+    pull_policy: never
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master", "--host", "spark-master-v2", "--port", "7077", "--webui-port", "8080"]
+    mem_limit: 512m
+    environment:
+      SPARK_DAEMON_MEMORY: 256m
+    restart: unless-stopped
+    networks: [staging]
+  spark-worker-v2:
+    image: vn-news-spark:3.5.7
+    pull_policy: never
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master-v2:7077", "--cores", "2", "--memory", "1g"]
+    mem_limit: 2g
+    environment:
+      SPARK_DAEMON_MEMORY: 384m
+    depends_on: [spark-master-v2]
+    restart: unless-stopped
+    networks: [staging]
+  spark-stream-v2:
+    image: vn-news-stream-v2:3.5.7
+    pull_policy: never
+    build:
+      context: ../../pipelines/spark
+    env_file:
+      - ${V2_ENV_FILE:?set V2_ENV_FILE}
+    volumes:
+      - v2-checkpoint:/state/v2
+      - type: bind
+        source: ${V2_SPARK_JARS_DIR:?set V2_SPARK_JARS_DIR}
+        target: /opt/local-jars
+        read_only: true
+        bind:
+          create_host_path: false
+    mem_limit: 2g
+    depends_on: [spark-worker-v2]
+    networks: [staging]
+networks:
+  staging:
+    name: vnnews-v2-staging
+    external: true
+volumes:
+  v2-checkpoint: {}
