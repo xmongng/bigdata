@@ -5,7 +5,7 @@
 - [A. Tổng quan](#a-tổng-quan)
 - [B. Đọc source](#b-đọc-source)
 - [C. Chỉnh sửa từng phần](#c-chỉnh-sửa-từng-phần)
-- [D. Cấu hình theo máy](#d-cấu-hình-theo-máy)
+- [D. Môi trường và triển khai](#d-môi-trường-và-triển-khai)
 - [E. Nghiệm thu end-to-end](#e-nghiệm-thu-end-to-end)
 - [F. Lộ trình học](#f-lộ-trình-học)
 
@@ -13,12 +13,12 @@
 
 Lakehouse lưu JSON gốc ở Bronze (MinIO), chuẩn hóa và hợp nhất theo `article_id` ở Silver (Iceberg), rồi phục vụ đọc qua Trino. Kafka chuyển sự kiện. Polaris quản lý REST catalog và dùng PostgreSQL để lưu trạng thái catalog. File dữ liệu và metadata Iceberg nằm trong object store. Gold hiện là SQL minh họa.
 
-**Đã đối chiếu source:** checkout `main`, baseline `3dc0429` và các sửa đổi local, gồm bộ lọc `article_id`. **Đã ghi nhận:** bằng chứng runtime lịch sử trong [inventory](runtime-inventory.md). **CHƯA KIỂM CHỨNG:** runtime hiện tại của VM1, VM2, Windows và Trino, cùng toàn bộ E2E V2. Xem [handoff](../CODEX_LAKEHOUSE_HANDOFF.md) và [rà soát V2](v2-readiness.md). Những nhận định scaffold trong handoff cần đọc theo thời điểm bàn giao.
+**Đã đối chiếu source:** checkout `main`, baseline `3dc0429` và các sửa đổi local, gồm bộ lọc `article_id`. **Đã ghi nhận:** bằng chứng runtime lịch sử trong [inventory](runtime-inventory.md). **CHƯA KIỂM CHỨNG:** runtime hiện tại của VM1, VM2 và các host ứng dụng/truy vấn, cùng toàn bộ E2E V2. Xem [handoff](../CODEX_LAKEHOUSE_HANDOFF.md) và [rà soát V2](v2-readiness.md). Những nhận định scaffold trong handoff cần đọc theo thời điểm bàn giao.
 
 ```mermaid
 flowchart LR
-  W["Windows: FastAPI V1"]
-  T["MacBook: Trino V1 theo inventory"]
+  W["Ingestion và GET: FastAPI V1"]
+  T["Query engine: Trino V1"]
   subgraph VM1["VM1: dịch vụ lõi V1"]
     K["Kafka"]
     M["MinIO: Bronze và Iceberg"]
@@ -44,7 +44,7 @@ flowchart LR
   T --> M
 ```
 
-MacBook và Windows là máy phát triển. V2 tách hai API, có hai Compose project và có thể nghiệm thu trên một Docker host. Dịch vụ lõi staging phải cấp riêng. Cùng tên bridge network trên hai máy không tạo kết nối liên host.
+Toàn bộ source, cấu hình, test và runbook nằm trong **một Git monorepo**. Máy phát triển dùng cùng checkout và công cụ, còn máy triển khai nhận image và cấu hình theo lớp chức năng. Sơ đồ trên mô tả luồng V1 theo inventory. V2 tách API ghi và API đọc, và có thể nghiệm thu trên một Docker host với dịch vụ lõi staging cấp riêng. Cùng tên bridge network trên hai máy không tạo kết nối liên host.
 
 ```mermaid
 sequenceDiagram
@@ -155,7 +155,7 @@ UPSERT rồi DELETE `lab-001` trong cùng batch cho `("lab-001", "", "", "", "",
 
 | Thứ tự | File cần sửa | Hiện trạng | Vấn đề | Cần viết lại/bổ sung | Cách kiểm thử |
 | --- | --- | --- | --- | --- | --- |
-| 1 | `scripts/test_apis.py`, `services/ingestion-api/src/main.py` | Đã có route và test mock | Hợp đồng Windows và lỗi từng ranh giới chưa chốt | Test contract trước, sửa validation có bằng chứng | Bộ test API |
+| 1 | `scripts/test_apis.py`, `services/ingestion-api/src/main.py` | Đã có route và test mock | Hợp đồng API V1 và lỗi từng ranh giới chưa chốt | Test contract trước, sửa validation có bằng chứng | Bộ test API |
 | 2 | `pipelines/spark/Dockerfile`, `pipelines/spark/run.sh`, `infrastructure/docker/compose.vm2.yaml` | Base/JAR offline và network riêng | Thiếu provenance, readiness, khả năng nối driver | Manifest, verify build, kiểm tra worker | Compose config, build/run staging |
 | 3 | `services/ingestion-api/src/outbox.py`, `adapters.py` cùng thư mục | SQLite và retry thủ công | ACK mơ hồ, lock khi I/O, retry POST sinh event mới | Hợp đồng idempotency, phục hồi, metrics, retention | Test fault injection và broker staging |
 | 4 | `pipelines/spark/src/main.py`, `ingestion.py`, `validation.py`, `transformations.py`, `iceberg_writer.py` cùng thư mục | Fail batch, gộp theo ID, guard batch ID | Poison event, ordering xuyên partition, duplicate ở batch khác | Quy tắc phiên bản sự kiện, quarantine có dấu vết | Unit, MERGE và replay staging |
@@ -163,7 +163,7 @@ UPSERT rồi DELETE `lab-001` trong cùng batch cho `("lab-001", "", "", "", "",
 | 6 | `trino/catalog/lake_v2.properties`, `services/query-api/src/main.py`, `scripts/smoke_staging.py` | REST/S3 và lookup ID | Chưa thử OAuth, binder, độ trễ và lỗi thật | Readiness và smoke theo từng chặng | SELECT thật, GET đúng ID, case 503 |
 | 7 | `.github/workflows/validate.yml`, `scripts/check-local.sh`, `infrastructure/docker/compose.production.yaml` | Validation và placeholder | Thiếu release gates, recovery và observability | CI integration cách ly, checklist trước production | CI, diễn tập restore và rollback |
 
-**1. Khóa hợp đồng API bằng test.** Mở `upload()`, `Article`, `article_key()` và `update()` rồi đọc `ApiTests.test_multi_upload_and_validation` và `test_crud_and_query_contract`. So route, payload, response và status với source `app.py` Windows đã được phép đọc. Thêm case BOM, danh sách rỗng, ID trắng, ID URL khác body, quá giới hạn và request nhiều file có một file lỗi. Sau đó mới sửa validator chung trong phạm vi service nếu quan sát thấy lệch. Acceptance gồm trả 400/413/422 đúng phạm vi và chưa gọi adapter nếu request invalid. Chạy `python -B scripts/test_apis.py`. Nếu cần đổi hợp đồng Windows, giữ route cũ hoặc version riêng; rollback bằng bản API trước khi đổi contract.
+**1. Khóa hợp đồng API bằng test.** Mở `upload()`, `Article`, `article_key()` và `update()` rồi đọc `ApiTests.test_multi_upload_and_validation` và `test_crud_and_query_contract`. So route, payload, response và status với source hoặc OpenAPI của bản V1 đã được phép kiểm tra. Thêm case BOM, danh sách rỗng, ID trắng, ID URL khác body, quá giới hạn và request nhiều file có một file lỗi. Sau đó mới sửa validator chung trong phạm vi service nếu quan sát thấy lệch. Acceptance gồm trả 400/413/422 đúng phạm vi và chưa gọi adapter nếu request invalid. Chạy `python -B scripts/test_apis.py`. Nếu cần đổi hợp đồng API V1, giữ route cũ hoặc version riêng; rollback bằng bản API trước khi đổi contract.
 
 **2. Làm cho Spark build lại được.** Mở `run.sh`, đọc mảng `jar_names` và lệnh `spark-submit`; đối chiếu Dockerfile và ba service VM2. Ghi image ID/digest, SHA-256 JAR, Spark/Scala/Python/boto3 và kiến trúc image. Thêm bước kiểm tra checksum trước submit, sau đó đo Worker đăng ký và executor có kết nối driver. Dùng `bash scripts/check-local.sh`, rồi các lệnh build đã duyệt ở D. Kỳ vọng build từ artifact đã chốt, thiếu/sai JAR fail rõ, Worker nhận đủ cores. Đổi base hoặc classpath có thể làm connector lệch phiên bản. Giữ image đã duyệt và checkpoint tương ứng để quay lại.
 
@@ -177,11 +177,11 @@ UPSERT rồi DELETE `lab-001` trong cùng batch cho `("lab-001", "", "", "", "",
 
 **7. Bổ sung release gates sau khi staging ổn định.** Mở job `local-checks` trong `validate.yml`. Giữ test nhanh. Thêm job tích hợp cô lập bằng dữ liệu giả, lưu commit/image digest và bằng chứng test, sau đó thêm metrics về pending age, Kafka lag, batch failures và độ trễ từ 202 đến GET. `compose.production.yaml` vẫn để placeholder trong lúc chưa chốt topology, TLS, ACL, HA, backup và SLA. Chạy test ở D/E và rehearsal từ backup. Nếu release lỗi, quay về image/config đã nghiệm thu và kiểm checkpoint/schema trước khi chạy lại.
 
-## D. Cấu hình theo máy
+## D. Môi trường và triển khai
 
-### MacBook và Windows
+### 1. Development Environment
 
-Mở root chứa `README.md` bằng Zed hoặc Codex. Dùng Git để đọc diff trước và sau mỗi bài tập. Tạo branch học tập khi đã lưu các thay đổi đang làm. Đồng bộ bằng private remote đã duyệt, review scan và diff trước khi commit/push. Mac dùng Bash và Python 3.12, Node 22+, Docker Desktop với Compose v2. Windows dùng PowerShell cho Python/Git và Git Bash cho `check-local.sh`; Docker Desktop cần engine phù hợp Linux container.
+Clone cùng private remote đã duyệt và mở root chứa `README.md` bằng editor hoặc Codex. Dùng cùng branch/commit, `requirements-test.txt` và workflow `.github/workflows/validate.yml` để tái lập kết quả. Git quản lý toàn bộ thay đổi xuyên lớp. Làm theo branch bài tập, xem diff và quét bí mật trước khi đồng bộ. Cần Git, Python 3.12, Node 22+ và Docker Compose v2. Bộ test mock chạy với cấu hình trong test. `check-local.sh` tự chọn env mẫu để validate Compose. PowerShell có cách gọi Python/venv riêng và cần Git Bash để chạy shell script. Dùng engine hỗ trợ Linux containers khi build các image của repo.
 
 Bash trên macOS/Linux, từ root:
 
@@ -211,47 +211,59 @@ try { & $Python -B -m unittest discover -s tests -v } finally { Pop-Location }
 bash scripts/check-local.sh
 ```
 
-Venv đặt ngoài repo để scanner tránh artifact. Nếu Windows báo thiếu `bash`, chạy dòng cuối từ Git Bash đã cài. Nếu cần thử HTTP/OpenAPI cục bộ ngoài Compose, cài requirements từng service vào venv riêng, chạy `python -m uvicorn src.main:app --host 127.0.0.1 --port 18000` từ `services/ingestion-api`, và tương tự từ `services/query-api` với `18001`. Cung cấp env staging trước khi gọi endpoint nghiệp vụ; đổi `OUTBOX_DB` sang thư mục ghi được trên host và `TRINO_HOST` sang host thật nếu chạy ngoài Docker. Health và OpenAPI có thể quan sát qua `/health` và `/openapi.json`. Nguồn Windows từng ghi `D:\Downloads\cty\lakehouse\news-api\app.py`; đọc bản hiện tại và so contract, đừng chạy script import để thay API V2.
+Venv đặt ngoài repo để scanner tránh artifact. Nếu Windows báo thiếu `bash`, chạy dòng cuối từ Git Bash đã cài.
 
-### VM1, VM2 và Trino
+### 2. VM1 – Infrastructure Services
 
-Các lệnh dưới đây chạy **tại máy tương ứng**, với quyền đã được cấp. Hostname/IP LAN trong snapshot là dữ liệu lịch sử. Kiểm tra IP và cổng công bố trên máy trước khi dùng. Chỉ chia sẻ output đã che bí mật, tránh `docker inspect` toàn bộ hoặc log chứa credential.
+VM1 là vị trí các dịch vụ lõi theo [inventory](runtime-inventory.md). Snapshot [compose.yaml](../infrastructure/docker/compose.yaml) pin Kafka 3.9.1, `pgsty/silo`, PostgreSQL 16 và Polaris 1.8.0. Kafka dùng listener nội bộ `kafka:19092` và LAN `9092`; S3 API `9000`, console loopback `9001`, Polaris `8181`, PostgreSQL nội bộ `postgres:5432`. Địa chỉ LAN `192.168.1.195` là lịch sử, cần đối chiếu trước khi cấu hình client.
 
-| Máy | Dependency và mạng | Kiểm kê chỉ đọc |
-| --- | --- | --- |
-| VM1 | Linux, Docker Engine/Compose, volume MinIO/Kafka/PostgreSQL. V1 từng dùng `192.168.1.195`, cổng S3 `9000`, Kafka LAN `9092`, Polaris `8181`. PostgreSQL `postgres:5432` nội bộ. Kafka client ngoài Docker phải với tới advertised listener từ container của nó. | `cd ~/vn-news-core && docker compose ps -a`. `docker compose logs --tail=100 kafka minio postgres polaris` để khoanh vùng sau khi kiểm tra log an toàn. Bootstrap exit 0 theo cấu hình là bình thường. |
-| VM2 | Linux, Docker/Compose, Spark 3.5.7 và bộ JAR offline, đủ CPU/RAM và volume checkpoint. Địa chỉ lịch sử `192.168.1.197`. Master/Worker/driver V2 cùng network; cổng Spark master `7077`, UI master `8080` nội bộ. | `cd ~/news-spark/docker && docker compose ps -a`. `docker ps -a --filter name=spark`. So hash và image như bên dưới. |
-| MacBook Trino V1 | Docker Desktop. Inventory ghi `vn-trino`, config local từng ở `~/vn-news-trino/catalog/lake.properties`. V1 cổng `8080` theo tài liệu. | `docker ps -a --filter name=vn-trino`. Kiểm tra bind và image để xác định bản triển khai. Đối với V2, Compose dùng `trino-v2:8080` nội bộ và loopback `18080` ngoài host. |
+Source liên quan gồm [schema init](../infrastructure/docker/postgres-init/001-schema.sql) và [provisioning Polaris](../infrastructure/polaris/provision_catalog.py). Compose V1 nhận `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `POSTGRES_PASSWORD`, `POLARIS_ADMIN_SECRET` từ env của người vận hành. Dùng placeholder trong tài liệu và cấp secret riêng cho mỗi ứng dụng. Tại VM1, với quyền chỉ đọc, chạy `cd ~/vn-news-core && docker compose ps -a`. Bootstrap exit 0 là kết quả mong đợi theo thiết kế. Khi được phép đọc log, dùng `docker compose logs --tail=100 kafka minio postgres polaris` và che bí mật trước khi chia sẻ.
+
+**Triển khai V2, CHƯA KIỂM CHỨNG:** Cấp cụm dịch vụ staging hoặc tài nguyên staging được cách ly và phê duyệt. Chốt broker/listener, bucket và warehouse S3, DB persistence, Polaris principal và quyền. Hai Compose V2 chưa cấp các dịch vụ lõi. Thiết kế bootstrap V2 riêng theo phần C và dùng DDL Silver qua Spark SQL. Nghiệm thu kết nối từ API/driver/executor/Trino, quyền PUT/GET S3, khả năng đọc Kafka qua advertised listener và OAuth catalog. Giữ tài nguyên V1 nguyên trạng trong đợt nghiệm thu.
+
+### 3. VM2 – Data Processing
+
+[Compose VM2](../infrastructure/docker/compose.vm2.yaml), [Spark Dockerfile](../pipelines/spark/Dockerfile), [runner](../pipelines/spark/run.sh) và [source Spark](../pipelines/spark/src/) đóng gói Master, Worker và streaming driver. Cần Docker/Compose, image Spark 3.5.7, bộ JAR Kafka/Iceberg offline và Python/boto3 từ base image. `V2_SPARK_JARS_DIR` là thư mục bind JAR trên host, driver chạy client mode trên `spark-master-v2:7077`, hostname driver `spark-stream-v2` phải phân giải được từ Worker. Cấu hình topic/bucket/catalog/checkpoint theo bảng bên dưới. VM2 từng dùng `192.168.1.197`.
+
+Kiểm kê chỉ đọc tại VM2, sau khi lấy đúng tên container từ `docker ps -a --filter name=spark`:
 
 ```bash
-# VM2, sau khi xác nhận tên container đang chạy
+cd "$HOME/news-spark/docker"
+docker compose ps -a
 sha256sum "$HOME/news-spark/streaming_job.py"
 docker exec spark-streaming sha256sum /app/streaming_job.py
 docker inspect --format '{{.Config.Image}} {{.Image}}' spark-streaming
 docker inspect --format '{{range .Mounts}}{{println .Source .Destination}}{{end}}' spark-streaming
-# MacBook, tại repo
-shasum -a 256 pipelines/spark/reference/streaming_job.py
-docker inspect --format '{{.Config.Image}} {{.Image}}' vn-trino
-docker port vn-trino
 ```
 
-Nếu tên đổi, lấy tên từ `docker ps -a`. Hash khác thì xác định mount so với file baked trong image trước khi sửa. V1 checkpoint từng ở `~/news-spark/checkpoints/main`; giữ riêng. Với VM1, các biến `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `POSTGRES_PASSWORD`, `POLARIS_ADMIN_SECRET` thuộc Compose V1. Cấp qua kênh secret của người vận hành. Không in env ra terminal dùng chung.
+So checksum với `pipelines/spark/reference/streaming_job.py` trong monorepo qua `shasum -a 256` trên macOS hoặc `sha256sum` trên Linux. Nếu mount hoặc hash khác inventory, xác định nguồn trong container trước khi đề xuất sửa. Giữ checkpoint V1 `~/news-spark/checkpoints/main` riêng. Triển khai staging theo trình tự build ở mục 6, kiểm Worker đăng ký/cores trước khi bật driver. Test local dùng `test_batch.py`; test thật kiểm `BATCH_OK`, ID ở Silver, lỗi checkpoint và replay theo phần E. Nếu job chờ executor, kiểm Worker, DNS và đường kết nối ngược driver. Nếu báo thiếu JAR, đối chiếu tên và checksum với runner.
 
-### Env và chạy staging riêng
+### 4. Query Layer – Trino và Query API
 
-Dùng [.env.example](../.env.example) làm đối chiếu. Sao chép ra file riêng ngoài Git và cấp secret bằng cơ chế của môi trường. Ví dụ giá trị chỉ là placeholder. Đảm bảo `/api/catalog` phù hợp base URL Polaris thực tế vì Spark nối thêm `/v1/oauth/tokens`, còn Trino nhận URL OAuth riêng.
+[Query API](../services/query-api/src/main.py) dùng FastAPI/Uvicorn và Trino DB-API theo [requirements](../services/query-api/requirements.txt). [Catalog V2](../trino/catalog/lake_v2.properties) yêu cầu Polaris OAuth và S3. [Compose staging](../infrastructure/docker/compose.staging.yaml) đặt `trino-v2` và `query-v2` trên **cùng Docker host chạy Compose**. Compose dùng `TRINO_HOST=trino-v2` theo env mẫu, cổng nội bộ `8080`, loopback Trino `18080` và Query API `18001`. Host vật lý do người vận hành chọn. Catalog V1 chỉ cho biết endpoint Polaris/S3, còn inventory lịch sử ghi `vn-trino` từng chạy trên MacBook. Xác minh trên host ứng viên bằng `docker ps -a --filter name=vn-trino`, `docker port vn-trino` và inspect có chọn image/mount theo mẫu ở mục 3.
+
+Khi staging được duyệt, chọn `V2_TRINO_IMAGE`, cấp các biến OAuth/S3 và `TRINO_*` bên dưới rồi build/chạy project staging. Kiểm `/health`, `SHOW TABLES`, SELECT theo ID và GET theo phần E. Nếu tách host, thay Docker DNS bằng DNS/IP Trino truy cập được từ Query API, cấp đường mạng có kiểm soát và review cơ chế xác thực/TLS. Loopback của Compose hiện tại chỉ nghe trên host chạy project. Lỗi 401/403 kiểm realm, token endpoint, warehouse và quyền; lỗi SELECT sau khi thấy bảng kiểm quyền và endpoint S3.
+
+### 5. Application Layer – Ingestion API
+
+[Ingestion API](../services/ingestion-api/src/main.py), [outbox](../services/ingestion-api/src/outbox.py) và [adapters](../services/ingestion-api/src/adapters.py) cùng nằm trong monorepo. [Dockerfile](../services/ingestion-api/Dockerfile) và [requirements](../services/ingestion-api/requirements.txt) đóng gói Python 3.12, Uvicorn, FastAPI/Pydantic, multipart, boto3, confluent-kafka và SQLite từ Python. Compose chạy `ingestion-v2` trên host được chọn với loopback `18000`, nhận cấu hình Kafka/S3 và `OUTBOX_DB`, mount volume riêng. Vị trí host có thể chọn theo mạng tới Kafka/MinIO, yêu cầu bảo mật và khả năng giữ volume. Vị trí Windows trong handoff là dấu vết của API V1.
+
+Để đọc OpenAPI khi phát triển, cài requirements service vào venv riêng và chạy `python -m uvicorn src.main:app --host 127.0.0.1 --port 18000` từ `services/ingestion-api`. Trên staging dùng Compose ở mục 6. Trước khi gọi route ghi, cấp env staging và đảm bảo đường SQLite trên host/volume có thể ghi. Kiểm `/health`, `/openapi.json`, test API mock, rồi upload/CRUD và retry theo E. Khi báo lỗi quyền SQLite, kiểm UID `65532` và mount `/state/v2`. Khi báo pending, giữ event ID, đối soát Kafka và retry cùng DB thay vì POST lại ngay.
+
+### 6. Deployment & Operations
+
+Dùng [.env.example](../.env.example) làm đối chiếu. Cấp env staging qua nơi lưu secret đã duyệt. `V2_MODE` có trong mẫu; guard hiện kiểm tên/đường dẫn, nên cần đối chiếu cả endpoint, quyền và volume. Các giá trị dưới đây chỉ là ví dụ. `POLARIS_URI` cần base REST phù hợp vì Spark nối thêm `/v1/oauth/tokens`; Trino dùng OAuth URL riêng.
 
 | Nhóm | Biến và ví dụ |
 | --- | --- |
 | Object store | `MINIO_ENDPOINT=http://STAGING_S3_HOST:9000`, `MINIO_BUCKET=vn-news-lake-v2`, `MINIO_ACCESS_KEY=<STAGING_ACCESS_KEY>`, `MINIO_SECRET_KEY=<STAGING_SECRET_KEY>` |
 | Kafka | `KAFKA_BOOTSTRAP=STAGING_KAFKA_HOST:9092`, `KAFKA_TOPIC=vn-news-events-v2` |
 | Polaris | `POLARIS_URI=http://STAGING_POLARIS_HOST:8181/api/catalog`, `POLARIS_WAREHOUSE=news_lake_v2`, `POLARIS_CLIENT_ID=<CLIENT_ID>`, `POLARIS_CLIENT_SECRET=<CLIENT_SECRET>`, `POLARIS_OAUTH_CREDENTIAL=<CLIENT_ID>:<CLIENT_SECRET>`, `POLARIS_OAUTH_URL=http://STAGING_POLARIS_HOST:8181/api/catalog/v1/oauth/tokens` |
-| Trino/API | `TRINO_HOST=trino-v2`, `TRINO_PORT=8080`, `TRINO_USER=lakehouse_v2`, `TRINO_CATALOG=lake_v2`, `TRINO_SCHEMA=news_db_v2`, `OUTBOX_DB=/state/v2/outbox.sqlite3` |
-| Spark/Compose | `SPARK_CHECKPOINT=file:///state/v2/checkpoint`, `V2_ENV_FILE=<PATH_TO_STAGING_ENV>`, `V2_SPARK_JARS_DIR=<PATH_TO_VERIFIED_JARS>`, `V2_TRINO_IMAGE=<APPROVED_IMAGE>` |
+| Query | `TRINO_HOST=trino-v2`, `TRINO_PORT=8080`, `TRINO_USER=lakehouse_v2`, `TRINO_CATALOG=lake_v2`, `TRINO_SCHEMA=news_db_v2` |
+| State | `OUTBOX_DB=/state/v2/outbox.sqlite3`, `SPARK_CHECKPOINT=file:///state/v2/checkpoint` |
+| Compose | `V2_ENV_FILE=<PATH_TO_STAGING_ENV>`, `V2_SPARK_JARS_DIR=<PATH_TO_VERIFIED_JARS>`, `V2_TRINO_IMAGE=<APPROVED_IMAGE>` |
 
-`V2_MODE` có trong mẫu; các guard chính hiện kiểm tên/đường dẫn. Xác minh cả endpoint, credential, resource và volume trước khi bật write. Tên có hậu tố chưa chứng minh isolation. Topology dễ nghiệm thu nhất là đặt hai project cùng Docker host dành cho staging. Khi thiết kế VM2 tách host, cần network nội bộ VM2 cho Spark và endpoint VM1 staging có thể định tuyến, cùng firewall/ACL; tên bridge network là cấu hình cục bộ từng host.
-
-Sau khi staging đã được cấp và cho phép khởi động, export ba biến Compose theo giá trị đã duyệt rồi chạy từ root trên Bash:
+**Staging một Docker host.** Khi đã cấp tài nguyên và được phép chạy, export ba biến Compose từ bảng rồi thực hiện từ repo root:
 
 ```bash
 docker compose -f infrastructure/docker/compose.staging.yaml config --quiet
@@ -260,14 +272,17 @@ docker compose -f infrastructure/docker/compose.staging.yaml build
 docker compose -f infrastructure/docker/compose.vm2.yaml build
 docker compose -f infrastructure/docker/compose.staging.yaml up -d
 docker compose -f infrastructure/docker/compose.vm2.yaml up -d spark-master-v2 spark-worker-v2
-# Sau khi Worker đã đăng ký và DDL V2 đã áp dụng bằng Spark SQL
+# Sau khi Worker đã đăng ký và đã tạo bảng V2 bằng Spark SQL
 docker compose -f infrastructure/docker/compose.vm2.yaml up -d spark-stream-v2
 docker compose -f infrastructure/docker/compose.staging.yaml ps -a
 docker compose -f infrastructure/docker/compose.vm2.yaml logs --tail=100 spark-stream-v2
 ```
 
-`up` ở đây dành cho staging một host. Cấp base image và JAR trước vì runner dùng artifact offline. DDL cần phiên Spark SQL có **cùng REST/S3/JAR** như `main()`. Repo chưa có lệnh migration đóng gói hoàn chỉnh cho khâu này. Nếu driver fail sớm, xem `Missing offline JAR`, network bị thiếu, memory hoặc DNS. Nếu Worker Up nhưng job chờ, kiểm registration/cores, hostname driver và đường kết nối ngược. Nếu SQLite lỗi quyền, kiểm mount `/state/v2` với UID 65532. Nếu Trino lỗi 401/403, kiểm realm, OAuth URL, warehouse và quyền principal.
+DDL cần Spark SQL với cấu hình REST/S3/JAR tương ứng `main()` của Spark. Repo chưa có lệnh migration đóng gói cho bước này. Mô hình nhiều host cần external network cho các container Spark được cấp trên VM2, endpoint Kafka/S3/Polaris định tuyến được giữa host, và cấu hình Trino/API theo mục 4–5. Cùng tên Docker network chỉ có ý nghĩa trên từng engine. Kiểm từng đường kết nối từ container trước khi bật ghi. Việc triển khai nội dung trên **CHƯA KIỂM CHỨNG**.
 
+**CI/CD và vận hành.** [validate.yml](../.github/workflows/validate.yml) chạy unit/mock, quét và Compose validation; script deploy chỉ preview. Chốt commit SHA, digest và cấu hình theo môi trường, chạy E2E trước khi duyệt release. [compose.production.yaml](../infrastructure/docker/compose.production.yaml) là placeholder. Trước khi lên production cần topology đã duyệt, TLS/ACL, HA, quyền API, monitoring và diễn tập recovery.
+
+Đo tuổi event pending, Kafka lag, tỷ lệ batch lỗi, thời gian từ 202 đến GET, sức khỏe PostgreSQL và dung lượng object store. Sao lưu DB Polaris, object Iceberg, SQLite outbox và checkpoint theo mốc phục hồi đã đối chiếu. Diễn tập restore ở môi trường riêng và xác minh snapshot/GET. Khi rollback, dừng tiến trình V2 thuộc release, giữ volume và quay về image/config tương thích với schema/checkpoint. Nếu không tương thích, phục hồi bộ state đã kiểm chứng trước khi cho phép ghi lại. Xem [runbook](operations.md).
 
 ## E. Nghiệm thu end-to-end
 
@@ -346,7 +361,7 @@ curl -fsS -G --data-urlencode "article_id=$id" http://127.0.0.1:18001/articles
 | --- | --- | --- | --- |
 | 1. Đọc và test local | Học HTTP, JSON, dependency injection, unittest. Đọc `services/ingestion-api/src/main.py`, `scripts/test_apis.py`, `pipelines/spark/tests/test_batch.py`. | Chạy bộ lệnh D, lần theo một upload từ request đến mock producer. Hoàn tất khi giải thích được vì sao 202 chưa xuất hiện ngay ở GET. | Giữ bài tập ở branch riêng; so diff trước khi bỏ thay đổi thử. |
 | 2. Chuẩn hóa source và Docker | Học image/layer, bind mount, named volume, network, Spark client mode. Làm `pipelines/spark/Dockerfile`, `pipelines/spark/run.sh`, hai Compose V2 và `.env.example`. | Đối chiếu inventory, chốt artifact, checksum, topology và readiness. `check-local.sh` pass, build sạch và Worker staging chạy được. | Sai image/JAR hoặc volume có thể chặn job. Quay lại image/config đã duyệt, giữ state. |
-| 3. Ingestion API | Học FastAPI contract, SQLite transaction, ACK và idempotency. Làm `services/ingestion-api/src/main.py`, `outbox.py`, `adapters.py`, `settings.py` cùng thư mục và `scripts/test_apis.py`. | Chốt hợp đồng Windows, test validation và failure injection, thêm cơ chế retry/idempotency theo C. Hoàn tất khi retry có dấu vết và không mất bản ghi đã nhận. | Migration outbox có thể cản rollback. Sao lưu, thử restore và ưu tiên schema tương thích. |
+| 3. Ingestion API | Học FastAPI contract, SQLite transaction, ACK và idempotency. Làm `services/ingestion-api/src/main.py`, `outbox.py`, `adapters.py`, `settings.py` cùng thư mục và `scripts/test_apis.py`. | Chốt hợp đồng API V1, test validation và failure injection, thêm cơ chế retry/idempotency theo C. Hoàn tất khi retry có dấu vết và không mất bản ghi đã nhận. | Migration outbox có thể cản rollback. Sao lưu, thử restore và ưu tiên schema tương thích. |
 | 4. Spark ETL | Học partition, offset, checkpoint, streaming micro-batch. Làm `pipelines/spark/src/main.py`, `ingestion.py`, `validation.py`, `transformations.py`, `iceberg_writer.py` cùng thư mục. | Chốt revision, quy tắc DLQ, giới hạn batch; chạy unit và replay staging với baseline catalog thử được cấp. Hoàn tất khi poison, duplicate, late event và DELETE có kết quả dự đoán được. | Đổi logic replay làm đổi dữ liệu. Giữ checkpoint tương ứng, tách bảng cho thay đổi không tương thích. |
 | 5. Iceberg, Polaris và Trino | Học snapshot, REST OAuth, S3 ACL và schema migration. Đọc `infrastructure/polaris/provision_catalog.py`, làm `sql/silver/articles-v2.sql`, `trino/catalog/lake_v2.properties`, `services/query-api/src/main.py`. | Hoàn thiện tooling bootstrap V2 riêng, migration, readiness và query. Hoàn tất khi chạy lặp bootstrap staging, SELECT/snapshot và binder đều pass. | Drift warehouse hoặc quyền quá rộng. Dừng khi mismatch, phục hồi config đã duyệt và diễn tập restore. |
 | 6. Staging E2E | Học kiểm tra độ trễ và đối soát xuyên dịch vụ. Làm `scripts/smoke_staging.py`, `docs/operations.md`. | Chạy toàn bộ E với ID tổng hợp và lỗi có kiểm soát. Hoàn tất khi có bằng chứng POST → Bronze/Kafka → Spark → Iceberg → Trino/GET, cả DELETE và phục hồi. | Chạy nhầm target gây ảnh hưởng V1. Duyệt resource matrix trước; rollback chỉ dừng tiến trình staging và giữ volume. |
@@ -357,7 +372,7 @@ curl -fsS -G --data-urlencode "article_id=$id" http://127.0.0.1:18001/articles
 1. Mở `services/ingestion-api/src/main.py`, đọc `upload()` → `deliver()` cùng test `test_multi_upload_and_validation`.
 2. Chạy baseline Python, secret scan và Compose validation ở D; ghi kết quả để so sau mỗi thay đổi.
 3. Đối chiếu VM2 chỉ đọc theo D khi có quyền, chốt image, mount, checksum và bộ JAR.
-4. So contract với FastAPI Windows rồi thêm test lỗi MinIO/Kafka và retry trên SQLite tạm.
+4. So hợp đồng với FastAPI V1 rồi thêm test lỗi MinIO/Kafka và retry trên SQLite tạm.
 5. Lập danh sách endpoint và tài nguyên staging V2 riêng, chốt bootstrap catalog và DDL trước khi chạy E2E.
 
 **File đầu tiên nên mở** là [Ingestion API main.py](../services/ingestion-api/src/main.py). Bài sửa đầu tiên phù hợp là bổ sung test cho một trường hợp validation còn thiếu, sau đó mới chỉnh phần logic mà test chứng minh cần thay đổi.
