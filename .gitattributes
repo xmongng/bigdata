@@ -1,4 +1,5 @@
 * text=auto
 *.sh text eol=lf
 *.py text eol=lf
+*.sha256 text eol=lf
 pipelines/spark/reference/streaming_job.py -text

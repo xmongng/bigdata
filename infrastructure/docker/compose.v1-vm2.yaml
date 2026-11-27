@@ -1,0 +1,42 @@
+name: vnnews-v1-app
+
+services:
+  trino:
+    image: ${V1_TRINO_IMAGE:?set V1_TRINO_IMAGE}
+    environment:
+      POLARIS_OAUTH_CREDENTIAL: ${POLARIS_OAUTH_CREDENTIAL:?set POLARIS_OAUTH_CREDENTIAL}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?set MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?set MINIO_SECRET_KEY}
+    volumes:
+      - ../../trino/catalog/lake.properties:/etc/trino/catalog/lake.properties:ro
+    restart: unless-stopped
+
+  api:
+    build: ./v1-api
+    depends_on:
+      trino:
+        condition: service_healthy
+    environment:
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://192.168.1.195:9000}
+      MINIO_BUCKET: ${MINIO_BUCKET:-vn-news-lake}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?set MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?set MINIO_SECRET_KEY}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-192.168.1.195:9092}
+      TRINO_HOST: trino
+      TRINO_PORT: '8080'
+    ports:
+      - '${V1_API_BIND:-127.0.0.1}:8000:8000'
+    volumes:
+      - type: bind
+        source: ../../services/news-api-v1
+        target: /app/news-api
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ../../examples/v1/articles
+        target: /app/data/vn_news_30_bai_that_2026-11-19/articles
+        read_only: true
+        bind:
+          create_host_path: false
+    restart: unless-stopped

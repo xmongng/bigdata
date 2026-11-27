@@ -1,0 +1,317 @@
+{
+  "run": "2026-11-19T024621150Z-7013",
+  "api": "http://127.0.0.1:8000",
+  "timeout": 150000,
+  "pollInterval": 1000,
+  "initial": {
+    "count": 18,
+    "articles": [
+      {
+        "article_id": "demo_bom_001",
+        "title": "Kiem thu UTF8 BOM",
+        "source": "demo_bom",
+        "category": "cong_nghe"
+      },
+      {
+        "article_id": "demo_bom_002",
+        "title": "Xu ly JSON co BOM",
+        "source": "demo_bom",
+        "category": "khoa_hoc"
+      },
+      {
+        "article_id": "demo_crud_001",
+        "title": "Bai bao ban dau",
+        "source": "crud_test",
+        "category": "cong_nghe"
+      },
+      {
+        "article_id": "demo_utf8_001",
+        "title": "Du lieu lon tai Viet Nam",
+        "source": "demo_utf8",
+        "category": "cong_nghe"
+      },
+      {
+        "article_id": "demo_utf8_002",
+        "title": "Xu huong AI",
+        "source": "demo_utf8",
+        "category": "khoa_hoc"
+      },
+      {
+        "article_id": "news_001",
+        "title": "Du lieu lon tai Viet Nam",
+        "source": "demo",
+        "category": "cong_nghe"
+      },
+      {
+        "article_id": "news_002",
+        "title": "Xu huong AI",
+        "source": "demo",
+        "category": "khoa_hoc"
+      },
+      {
+        "article_id": "vne_5145666",
+        "title": "Ngôi trường trăm tỷ thầy giáo Hà Nội tặng học sinh vùng Cao nguyên đá",
+        "source": "VnExpress",
+        "category": "giao_duc"
+      },
+      {
+        "article_id": "vne_5145688",
+        "title": "Cô giáo đạt 8.0 IELTS về vùng cao dạy học",
+        "source": "VnExpress",
+        "category": "giao_duc"
+      },
+      {
+        "article_id": "vne_5145768",
+        "title": "Các siêu trung tâm dữ liệu Mỹ tăng phát thải gấp ba lần sau 8 năm",
+        "source": "VnExpress",
+        "category": "kinh_te"
+      },
+      {
+        "article_id": "vne_5145781",
+        "title": "Mỗi ha dừa có thể mang về 150 triệu đồng mỗi năm",
+        "source": "VnExpress",
+        "category": "kinh_te"
+      },
+      {
+        "article_id": "vne_5145906",
+        "title": "Đại học Huế có giám đốc mới",
+        "source": "VnExpress",
+        "category": "giao_duc"
+      },
+      {
+        "article_id": "vne_5146011",
+        "title": "Dự kiến lùi trách nhiệm tái chế phương tiện giao thông đến năm 2030",
+        "source": "VnExpress",
+        "category": "kinh_te"
+      },
+      {
+        "article_id": "vne_5146087",
+        "title": "100 nơi làm việc tốt nhất Việt Nam năm 2026",
+        "source": "VnExpress",
+        "category": "kinh_te"
+      },
+      {
+        "article_id": "vne_5146089",
+        "title": "APEC 2026: Kỳ vọng gác lại bất đồng thương mại",
+        "source": "VnExpress",
+        "category": "kinh_te"
+      },
+      {
+        "article_id": "vne_5146103",
+        "title": "Đề xuất thí điểm trung tâm công nghiệp - năng lượng quốc gia",
+        "source": "VnExpress",
+        "category": "kinh_te"
+      },
+      {
+        "article_id": "vne_5146202",
+        "title": "VN-Index giảm hơn 23 điểm",
+        "source": "VnExpress",
+        "category": "kinh_te"
+      },
+      {
+        "article_id": "vne_5146262",
+        "title": "Thư của Bộ trưởng Hoàng Minh Sơn gửi giáo viên nhân ngày 20/11",
+        "source": "VnExpress",
+        "category": "giao_duc"
+      }
+    ]
+  },
+  "scenarios": [],
+  "reads": [
+    {
+      "concurrency": 1,
+      "samples": [
+        {
+          "status": 200,
+          "ms": 226.51250000000005,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 189.17640000000006,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 210.7532,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 223.4783,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 173.60289999999986,
+          "timing": null,
+          "count": 18
+        }
+      ]
+    },
+    {
+      "concurrency": 2,
+      "samples": [
+        {
+          "status": 200,
+          "ms": 185.71119999999996,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 171.07169999999996,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 179.2195999999999,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 187.90020000000004,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 198.33490000000006,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 170.71550000000002,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 191.32140000000004,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 203.83629999999994,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 223.84720000000016,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 240.56309999999985,
+          "timing": null,
+          "count": 18
+        }
+      ]
+    },
+    {
+      "concurrency": 3,
+      "samples": [
+        {
+          "status": 200,
+          "ms": 212.0625,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 223.69249999999965,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 248.30080000000044,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 252.2520999999997,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 219.17470000000003,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 218.17779999999993,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 218.26919999999973,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 240.82389999999987,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 240.3712999999998,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 176.25250000000005,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 176.41919999999982,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 182.57050000000027,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 136.18740000000025,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 182.48349999999982,
+          "timing": null,
+          "count": 18
+        },
+        {
+          "status": 200,
+          "ms": 144.9358000000002,
+          "timing": null,
+          "count": 18
+        }
+      ]
+    }
+  ]
+}

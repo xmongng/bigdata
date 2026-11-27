@@ -1,8 +1,9 @@
 # Vietnamese News Lakehouse
 
-V1 đang chạy trên VM1/VM2, MacBook và Windows. Workspace này chứa cả snapshot V1 phục vụ đối chiếu lẫn code V2 staging.
+V1 triển khai trên VM1 và VM2 từ mã nguồn quản lý trong `bigdata`. Workspace cũng chứa mã V2 staging và tài liệu đối chiếu kiến trúc bốn máy ban đầu.
 
 - [Kiến trúc V1](docs/architecture-current.md) và [inventory đã đối chiếu](docs/runtime-inventory.md)
+- [Triển khai V1 trên hai VM và kiểm tra độ trễ Spark](docs/v1-two-vms.md)
 - [Kiến trúc V2](docs/architecture-target.md), [vận hành staging](docs/operations.md), [kế hoạch chuyển đổi](docs/migration-v1-to-v2.md)
 - [Audit bảo mật](docs/security.md) và [rà soát mức độ hoàn thiện V2](docs/v2-readiness.md)
 

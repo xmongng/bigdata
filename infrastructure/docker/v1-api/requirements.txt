@@ -1,0 +1,9 @@
+boto3==1.44.5
+confluent-kafka==2.16.2
+fastapi==0.163.2
+pydantic==2.14.3
+python-dotenv==1.2.4
+python-multipart==0.0.34
+requests==2.34.2
+trino==0.340.0
+uvicorn==0.54.0

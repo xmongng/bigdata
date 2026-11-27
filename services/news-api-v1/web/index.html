@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lakehouse Tin Việt</title>
+  <link rel="stylesheet" href="/dashboard/dashboard.css">
+  <script type="module" src="/dashboard/dashboard.js"></script>
+</head>
+<body>
+  <header><div class="shell masthead"><strong>Lakehouse Tin Việt</strong><a href="/docs">Tài liệu API</a></div></header>
+  <main class="shell">
+    <h1>Xử lý và phân tích tin tức</h1>
+    <p class="muted">Theo dõi từ lúc gửi JSON đến lúc đọc được kết quả qua Trino.</p>
+    <div class="overview">
+      <section class="panel">
+        <div class="section-head"><h2>Upload dữ liệu</h2><button id="reset" type="button" class="danger">Reset bảng</button></div>
+        <form id="upload">
+          <label for="files">Chọn một hoặc nhiều file JSON</label>
+          <input id="files" type="file" accept=".json,application/json" multiple required>
+          <p class="muted">Tối đa 10 MB mỗi file. Mỗi bài cần có article_id.</p>
+          <button id="send">Gửi xử lý</button>
+          <button id="preset" type="button" class="secondary">Nạp lại bộ 30 bài</button>
+        </form>
+        <p id="upload-status" role="status"></p>
+        <button id="verify" type="button" class="secondary" hidden>Kiểm tra lại trên Trino</button>
+        <p id="verification" class="muted" role="status"></p>
+      </section>
+      <section class="panel">
+        <div class="section-head"><h2>Thống kê dữ liệu</h2><button id="refresh" class="secondary">Làm mới</button></div>
+        <p id="data-summary" class="muted"></p>
+        <h3>Chuyên mục</h3>
+        <div id="categories"></div>
+        <h3>Nguồn tin</h3>
+        <div id="sources"></div>
+        <p id="analysis-status" role="status"></p>
+      </section>
+    </div>
+    <section class="panel results" id="run-results" hidden>
+      <h2>Tiến trình và metrics lần upload</h2>
+      <div class="stages" id="stages"></div>
+      <div class="scroll"><table><thead><tr><th>File</th><th>Trạng thái</th><th>Độ trễ API tiếp nhận</th><th>Thời gian lưu MinIO</th><th>Thời gian chờ Kafka xác nhận</th><th>Độ trễ đến khi Trino đọc đủ bài</th></tr></thead><tbody id="queue"></tbody></table></div>
+      <h3>Độ trễ quan sát</h3>
+      <div id="run-chart" class="chart"></div>
+      <p class="muted">Độ trễ Trino tính từ lúc gửi file đến khi lần kiểm tra đầu tiên thấy đủ bài. Dấu — biểu thị mốc chưa đo được.</p>
+    </section>
+    <details class="panel results" id="benchmark" hidden>
+      <summary>Benchmark đã chạy</summary>
+      <p id="benchmark-summary" class="muted"></p>
+      <div id="benchmark-chart" class="chart"></div>
+      <div class="scroll"><table><thead><tr><th>Kịch bản tải</th><th>Yêu cầu đồng thời</th><th>Số file</th><th>Bài đọc được / dự kiến</th><th>Độ trễ đến phản hồi 202 cuối</th><th>Độ trễ đến khi Trino đọc đủ bài</th><th>Thông lượng toàn luồng (bài/giây)</th></tr></thead><tbody id="benchmark-rows"></tbody></table></div>
+      <h3>Thời gian đọc bài qua API</h3>
+      <div id="read-chart" class="chart"></div>
+    </details>
+    <section class="panel results">
+      <div class="section-head"><h2>Bài viết</h2><label>Chuyên mục <select id="filter"><option value="">Tất cả</option></select></label></div>
+      <p id="row-count" class="muted"></p>
+      <div class="scroll"><table><thead><tr><th>Bài viết</th><th>Nguồn</th><th>Chuyên mục</th><th>Ngày đăng</th></tr></thead><tbody id="articles"></tbody></table></div>
+    </section>
+  </main>
+</body>
+</html>
