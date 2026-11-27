@@ -1,0 +1,46 @@
+:root{font:100%/1.55 system-ui,sans-serif;color:#17273b;background:#eef3f8}
+*{box-sizing:border-box}
+body{margin:0}
+header{background:#132944;color:#fff}
+.shell{width:min(1160px,calc(100% - 2rem));margin:auto}
+.masthead,.section-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.masthead{min-height:4rem}
+.masthead a{color:#d4e8ff}
+main{padding:2.5rem 0}
+h1{font-size:clamp(1.9rem,4vw,3rem);letter-spacing:-.04em;line-height:1.1;margin:0}
+h2{font-size:1.2rem;margin:0 0 .7rem}
+.section-head h2{margin:0}
+.muted{color:#50627a}
+.overview{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.5rem 0 1rem}
+.panel{background:#fff;border:1px solid #d9e3ee;border-radius:1rem;padding:1.35rem;min-width:0}
+label{font-weight:600}
+input,select,button{font:inherit}
+input[type=file]{display:block;width:100%;margin:.6rem 0;padding:.7rem;border:1px dashed #8ea7c1;border-radius:.6rem;background:#f6f9fc}
+input::file-selector-button{font:inherit;border:0;border-radius:.35rem;background:#e0ebf7;padding:.3rem .6rem;margin-right:.6rem}
+button,select{padding:.45rem .8rem;border-radius:.45rem;border:1px solid #8ea7c1}
+button{cursor:pointer;color:white;background:#1455a0;border-color:#1455a0;font-weight:600}
+button:disabled{opacity:.6;cursor:wait}
+.secondary,select{color:#163c66;background:#f5f9fe}
+.danger{color:#992d24;background:#fff1ef;border-color:#ebbab3}
+h3{font-size:1rem;margin:1rem 0 .35rem}
+.section-head + form{margin-top:1rem}
+.results{margin-bottom:1rem}
+.bar{display:grid;grid-template-columns:minmax(8rem,1.1fr) minmax(3rem,2fr) minmax(2rem,auto);gap:.6rem;align-items:center;margin:.45rem 0}
+.bar span{overflow-wrap:anywhere}
+progress{width:100%;accent-color:#146b89}
+progress.commit{accent-color:#19785b}
+.chart{max-height:24rem;overflow:auto;padding:.25rem 0}
+.stages{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin:0 0 1rem}
+.stages div{display:grid;gap:.2rem;background:#f0f6fc;padding:.65rem;border-radius:.5rem}
+.stages strong{font-size:1.25rem}
+.state-done td:nth-child(2){color:#116645;font-weight:700}
+.state-error td:nth-child(2),.state-mismatch td:nth-child(2){color:#a02622;font-weight:700}
+.state-pending td:nth-child(2),.state-existing td:nth-child(2),.state-unknown td:nth-child(2){color:#815016;font-weight:650}
+#queue td:first-child{overflow-wrap:anywhere}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:36rem}
+td,th{text-align:left;border-bottom:1px solid #dfe8f1;padding:.65rem;vertical-align:top}
+th{color:#425a74;background:#f6f9fc}
+summary{cursor:pointer;font-weight:600}
+details p{white-space:pre-wrap}
+@media(max-width:760px){.overview{grid-template-columns:1fr}main{padding-top:1.5rem}.stages{grid-template-columns:1fr 1fr}}
